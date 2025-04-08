@@ -1,12 +1,14 @@
-<div class="bg-white rounded-lg shadow-lg h-screen max-w-md">
+<div class="bg-white rounded-lg shadow-lg md:h-screen md:max-w-md">
     <div class="p-4 border-b">
         <h2 class="text-xl font-semibold text-gray-800">Telegram Users</h2>
     </div>
 
-    <div class="overflow-y-auto h-[calc(100vh-5rem)]">
+    <div class="overflow-y-auto md:h-[calc(100vh-5rem)] h-[150px]">
+        {{-- Block of each user --}}
         <ul class="divide-y">
             @forelse ($users as $user)
-                <li wire:key="{{ $user->id }}" wire:click="selectUser({{ $user->id }})"
+                <li wire:key="{{ $user->id }}" 
+                    wire:click="selectUser({{ $user->id }})"
                     class="p-4 hover:bg-gray-50 cursor-pointer {{ $selectedUserId === $user->id ? 'bg-blue-50' : '' }}">
                     <div class="flex items-center space-x-3">
                         <div class="flex-shrink-0">

@@ -27,15 +27,27 @@ class TelegramUserList extends Component
 
     public function refreshUsers()
     {
+        // $this->users = TelegramUser::with(['lastMessage'])
+        //     ->latest()
+        //     ->get()
+        //     ->map(function ($user) {
+        //         $user->unread_count = TelegramMessage::where('telegram_user_id', $user->id)
+        //             ->where('is_read', false)
+        //             ->count();
+        //         return $user;
+        //     });
         $this->users = TelegramUser::with(['lastMessage'])
-            ->latest()
-            ->get()
-            ->map(function ($user) {
-                $user->unread_count = TelegramMessage::where('telegram_user_id', $user->id)
-                    ->where('is_read', false)
-                    ->count();
-                return $user;
-            });
+        ->get()
+        ->map(function ($user) {
+            $user->unread_count = TelegramMessage::where('telegram_user_id', $user->id)
+                ->where('is_read', false)
+                ->count();
+            return $user;
+        })
+        ->sortByDesc(function ($user) {
+            return $user->lastMessage?->created_at ?? $user->created_at;
+        })
+        ->values();
     }
 
     public function selectUser($userId)
