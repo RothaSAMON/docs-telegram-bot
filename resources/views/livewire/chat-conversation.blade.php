@@ -1,5 +1,11 @@
-<div class="bg-white rounded-lg shadow-lg h-screen" wire:poll.10s>
+<div class="bg-white rounded-lg shadow-lg h-screen">
     @if ($telegramUser)
+    <div x-data x-init="$nextTick(() => {
+        const messageContainer = document.getElementById('chat-messages');
+        if (messageContainer) {
+            messageContainer.scrollTop = messageContainer.scrollHeight;
+        }
+    })">
         <!-- Chat Header -->
         <div class="p-4 border-b flex items-center space-x-3">
             <div class="flex-shrink-0">
@@ -18,7 +24,12 @@
         </div>
 
         <!-- Chat Messages -->
-        <div class="h-[calc(100vh-10rem)] overflow-y-auto p-4 space-y-4" id="chat-messages" wire:key="messages-container">
+        <div 
+            class="h-[calc(100vh-10rem)] overflow-y-auto p-4 space-y-4" 
+            id="chat-messages" 
+            wire:key="messages-container"
+            {{-- x-ref="messageContainer" --}}
+        >
             @foreach ($messages as $message)
                 <div class="flex {{ $message['sender'] == 'admin' ? 'justify-end' : 'justify-start' }}"
                     wire:key="message-{{ $loop->index }}">
@@ -33,6 +44,7 @@
                 </div>
             @endforeach
         </div>
+    </div>
 
         <!-- Chat Input -->
         <div class="p-4 border-t">
@@ -53,24 +65,34 @@
     @endif
 </div>
 
-@push('scripts')
-    <script>
-        document.addEventListener('livewire:initialized', () => {
-            // Scroll to bottom when messages are loaded
-            Livewire.on('conversationLoaded', () => {
-                const messagesContainer = document.getElementById('chat-messages');
-                if (messagesContainer) {
-                    messagesContainer.scrollTop = messagesContainer.scrollHeight;
-                }
-            });
+<script>
+    document.addEventListener('livewire:initialized', () => {
+        const scrollToBottom = () => {
+            const messageContainer = document.getElementById('chat-messages');
+            if (messageContainer) {
+                setTimeout(() => {
+                    messageContainer.scrollTop = messageContainer.scrollHeight;
+                }, 200);
+            }
+        };
 
-            // Scroll to bottom when new message arrives
-            Livewire.on('messageReceived', () => {
-                const messagesContainer = document.getElementById('chat-messages');
-                if (messagesContainer) {
-                    messagesContainer.scrollTop = messagesContainer.scrollHeight;
-                }
-            });
+        // When conversation is loaded
+        Livewire.on('conversationLoaded', () => {
+            scrollToBottom();
         });
-    </script>
-@endpush
+
+        // When message is sent or received
+        Livewire.on('messageSent', scrollToBottom);
+        Livewire.on('messageReceived', scrollToBottom);
+
+        // Watch for changes in the messages container
+        const observer = new MutationObserver(scrollToBottom);
+        const messageContainer = document.getElementById('chat-messages');
+        if (messageContainer) {
+            observer.observe(messageContainer, { 
+                childList: true,
+                subtree: true 
+            });
+        }
+    });
+</script>
