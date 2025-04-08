@@ -13,7 +13,7 @@ class TelegramService
     public function __construct()
     {
         $this->botToken = config('services.telegram.bot_token');
-        $this->apiUrl = "<https://api.telegram.org/bot{$this->botToken}>";
+        $this->apiUrl = "https://api.telegram.org/bot{$this->botToken}";
     }
 
     public function sendMessage(string $chatId, string $message): bool
