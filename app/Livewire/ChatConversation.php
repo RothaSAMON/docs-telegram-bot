@@ -101,16 +101,34 @@ class ChatConversation extends Component
     public function handleNewMessage($event)
     {
         Log::info('New message received in conversation', $event);
-
-        if ($this->telegramUser && $event['telegram_user_id'] === $this->telegramUser->id) {
-            $this->messages->push([
-                'sender' => 'user',
-                'message' => $event['message'],
-                'created_at' => now()
-            ]);
-
-            $this->dispatch('messageReceived');
-            $this->dispatch('messageReceived')->to('telegram-user-list');
+    
+        if (!$this->telegramUser) {
+            return;
+        }
+    
+        if ($event['telegram_user_id'] === $this->telegramUser->id) {
+            // Fetch the latest message from the database
+            $latestMessage = TelegramMessage::where('telegram_user_id', $this->telegramUser->id)
+                ->latest()
+                ->first();
+    
+            if ($latestMessage) {
+                $this->messages = TelegramMessage::where('telegram_user_id', $this->telegramUser->id)
+                    ->orderBy('created_at', 'asc')
+                    ->get()
+                    ->map(function ($message) {
+                        return [
+                            'sender' => $message->from_admin ? 'admin' : 'user',
+                            'message' => $message->content,
+                            'file_url' => $message->file_url,
+                            'file_type' => $message->file_type,
+                            'created_at' => $message->created_at
+                        ];
+                    });
+    
+                $this->dispatch('messageReceived');
+                $this->dispatch('messageReceived')->to('telegram-user-list');
+            }
         }
     }
 

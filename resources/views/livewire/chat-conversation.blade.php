@@ -37,12 +37,13 @@
                         <div class="">
                             <img src="{{ $message['file_url'] }}" 
                                 alt="Shared image" 
-                                class="rounded-lg max-w-full h-auto cursor-pointer"
+                                class="rounded-lg max-w-[400px] h-auto cursor-pointer"
                                 onclick="window.open('{{ $message['file_url'] }}', '_blank')"
-                                loading="lazy">
+                                loading="lazy"
+                                onerror="this.style.display='none'">
                         </div>
                     @endif
-                    @if ($message['message'])
+                    @if (!empty($message['message']))
                         <p class="text-sm">{{ $message['message'] }}</p>
                     @endif
                     <p class="text-xs {{ $message['sender'] == 'admin' ? 'text-blue-100' : 'text-gray-500' }} mt-1">
