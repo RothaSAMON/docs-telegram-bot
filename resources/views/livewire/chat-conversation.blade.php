@@ -25,25 +25,33 @@
 
         <!-- Chat Messages -->
         <div 
-            class="h-[calc(100vh-10rem)] overflow-y-auto p-4 space-y-4" 
-            id="chat-messages" 
-            wire:key="messages-container"
-            {{-- x-ref="messageContainer" --}}
-        >
-            @foreach ($messages as $message)
-                <div class="flex {{ $message['sender'] == 'admin' ? 'justify-end' : 'justify-start' }}"
-                    wire:key="message-{{ $loop->index }}">
-                    <div
-                        class="max-w-[70%] {{ $message['sender'] == 'admin' ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-900' }} rounded-lg px-4 py-2 shadow">
+        class="h-[calc(100vh-10rem)] overflow-y-auto p-4 space-y-4" 
+        id="chat-messages" 
+        wire:key="messages-container">
+        @foreach ($messages as $message)
+            <div class="flex {{ $message['sender'] == 'admin' ? 'justify-end' : 'justify-start' }}"
+                wire:key="message-{{ $loop->index }}">
+                <div
+                    class="max-w-[70%] {{ $message['sender'] == 'admin' ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-900' }} rounded-lg px-2 py-2 shadow">
+                    @if (isset($message['file_url']) && $message['file_type'] === 'photo')
+                        <div class="">
+                            <img src="{{ $message['file_url'] }}" 
+                                alt="Shared image" 
+                                class="rounded-lg max-w-full h-auto cursor-pointer"
+                                onclick="window.open('{{ $message['file_url'] }}', '_blank')"
+                                loading="lazy">
+                        </div>
+                    @endif
+                    @if ($message['message'])
                         <p class="text-sm">{{ $message['message'] }}</p>
-                        <p
-                            class="text-xs {{ $message['sender'] == 'admin' ? 'text-blue-100' : 'text-gray-500' }} mt-1">
-                            {{ $message['created_at']->format('h:i A') }}
-                        </p>
-                    </div>
+                    @endif
+                    <p class="text-xs {{ $message['sender'] == 'admin' ? 'text-blue-100' : 'text-gray-500' }} mt-1">
+                        {{ $message['created_at']->format('h:i A') }}
+                    </p>
                 </div>
-            @endforeach
-        </div>
+            </div>
+        @endforeach
+    </div>
     </div>
 
         <!-- Chat Input -->

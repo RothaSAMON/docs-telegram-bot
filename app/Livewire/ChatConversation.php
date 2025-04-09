@@ -43,6 +43,8 @@ class ChatConversation extends Component
                 return [
                     'sender' => $message->from_admin ? 'admin' : 'user',
                     'message' => $message->content,
+                    'file_url' => $message->file_url,
+                    'file_type' => $message->file_type,
                     'created_at' => $message->created_at
                 ];
             });

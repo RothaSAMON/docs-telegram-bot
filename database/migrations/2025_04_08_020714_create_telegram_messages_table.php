@@ -13,8 +13,10 @@ return new class extends Migration
     {
         Schema::create('telegram_messages', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('telegram_user_id')->constrained('telegram_users')->onDelete('cascade');
-            $table->text('content');
+            $table->foreignId('telegram_user_id')->constrained('telegram_users');
+            $table->text('content')->nullable();
+            $table->string('file_url')->nullable();
+            $table->string('file_type')->nullable();
             $table->boolean('from_admin')->default(false);
             $table->boolean('is_read')->default(false);
             $table->timestamps();

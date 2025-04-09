@@ -42,4 +42,40 @@ class TelegramService
             return false;
         }
     }
+
+    public function getPhoto(string $fileId): ?string
+    {
+        try {
+            // Get file path from Telegram
+            $response = Http::get("{$this->apiUrl}/getFile", [
+                'file_id' => $fileId
+            ]);
+
+            if (!$response->successful()) {
+                Log::error('Failed to get file path from Telegram', [
+                    'file_id' => $fileId,
+                    'error' => $response->json(),
+                ]);
+                return null;
+            }
+
+            $filePath = $response->json()['result']['file_path'];
+            
+            // Download file content
+            $fileUrl = "https://api.telegram.org/file/bot{$this->botToken}/{$filePath}";
+            $fileContent = Http::get($fileUrl)->body();
+            
+            if (empty($fileContent)) {
+                return null;
+            }
+
+            return $fileContent;
+        } catch (\Exception $e) {
+            Log::error('Error getting photo from Telegram', [
+                'file_id' => $fileId,
+                'error' => $e->getMessage(),
+            ]);
+            return null;
+        }
+    }
 }

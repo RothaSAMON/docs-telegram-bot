@@ -11,6 +11,8 @@ class TelegramMessage extends Model
         'content',
         'from_admin',
         'is_read',
+        'file_url',
+        'file_type'
     ];
 
     protected $casts = [
