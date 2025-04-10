@@ -9,6 +9,7 @@ use App\Services\TelegramService;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 use Livewire\Attributes\On;
+use App\Services\S3FileUpload;
 
 class ChatConversation extends Component
 {
@@ -137,5 +138,50 @@ class ChatConversation extends Component
     public function render()
     {
         return view('livewire.chat-conversation');
+    }
+
+    public function sendVoiceMessage($audioBlob)
+    {
+        if (!$this->telegramUser) {
+            return;
+        }
+    
+        try {
+            // Upload to S3
+            $fileUrl = app(S3FileUpload::class)->uploadFile($audioBlob, 'voice');
+    
+            // Create message in database
+            $message = TelegramMessage::create([
+                'telegram_user_id' => $this->telegramUser->id,
+                'content' => '',
+                'file_url' => $fileUrl,
+                'file_type' => 'voice',
+                'from_admin' => true,
+                'is_read' => true,
+            ]);
+    
+            // Send via Telegram
+            app(TelegramService::class)->sendVoice(
+                $this->telegramUser->chat_id,
+                $fileUrl
+            );
+    
+            // Update local messages
+            $this->messages->push([
+                'sender' => 'admin',
+                'message' => '',
+                'file_url' => $fileUrl,
+                'file_type' => 'voice',
+                'created_at' => now()
+            ]);
+    
+            $this->dispatch('messageReceived');
+            $this->dispatch('messageReceived')->to('telegram-user-list');
+        } catch (\Exception $e) {
+            Log::error('Error sending voice message', [
+                'error' => $e->getMessage(),
+                'user_id' => $this->telegramUser->id
+            ]);
+        }
     }
 }

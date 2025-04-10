@@ -34,6 +34,7 @@
                     !isset($message['media_group_id']) || 
                     !in_array($message['media_group_id'], $processedGroups)
                 )
+                    <!-- Inside the main message loop -->
                     <div class="flex {{ $message['sender'] == 'admin' ? 'justify-end' : 'justify-start' }}"
                         wire:key="message-{{ $loop->index }}">
                         <div class="max-w-[70%] {{ $message['sender'] == 'admin' ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-900' }} rounded-lg px-2 py-2 shadow">
@@ -55,18 +56,60 @@
                                     $processedGroups[] = $message['media_group_id'];
                                 @endphp
                             @elseif (isset($message['file_url']) && $message['file_type'] === 'photo' && !isset($message['media_group_id']))
-                                <div class="">
+                                <di class="">
                                     <img src="{{ $message['file_url'] }}" 
                                         alt="Shared image" 
                                         class="rounded-lg max-w-full md:max-w-[400px] h-auto cursor-pointer"
                                         onclick="window.open('{{ $message['file_url'] }}', '_blank')"
                                         loading="lazy">
+                                </di
+                            @elseif (isset($message['file_url']) && $message['file_type'] === 'voice')
+                                <div class="audio-message flex items-center gap-3 min-w-[240px]">
+                                    <button 
+                                        class="play-pause-btn w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center hover:bg-blue-700 transition-colors"
+                                        onclick="toggleAudioPlayback(this, '{{ $message['file_url'] }}')"
+                                        data-playing="false">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-white" viewBox="0 0 20 20" fill="currentColor">
+                                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"/>
+                                        </svg>
+                                    </button>
+                                    <div class="flex-1">
+                                        <div class="waveform bg-blue-100 py-1 h-[30px] rounded-lg relative overflow-hidden">
+                                            <div class="waveform-bars flex items-center h-full px-2 space-x-[2px]">
+                                                @for ($i = 0; $i < 40; $i++)
+                                                    @php $height = rand(20, 100); @endphp
+                                                    <div class="bar w-[3px] bg-blue-300" style="height: {{ $height }}%"></div>
+                                                @endfor
+                                            </div>
+                                            <div class="progress absolute top-0 left-0 h-full bg-blue-500/20 pointer-events-none" style="width: 0%"></div>
+                                        </div>
+                                        <div class="flex justify-between text-xs text-gray-500 mt-1">
+                                            <span class="duration">0:00</span>
+                                            {{-- <span>{{ $message['created_at']->format('H:i') }}</span> --}}
+                                        </div>
+                                    </div>
                                 </div>
+                                
+                                <style>
+                                    .waveform-bars {
+                                        animation: none;
+                                    }
+                                    
+                                    [data-playing="true"] ~ div .waveform-bars {
+                                        animation: pulse 1s infinite;
+                                    }
+                                    
+                                    @keyframes pulse {
+                                        0% { opacity: 0.3; }
+                                        50% { opacity: 1; }
+                                        100% { opacity: 0.3; }
+                                    }
+                                </style>
                             @endif
-                            @if (!empty($message['message']))
+                            @if (!empty($message['message']) && (!isset($message['file_type']) || $message['file_type'] !== 'voice'))
                                 <p class="text-sm">{{ $message['message'] }}</p>
                             @endif
-                            <p class="text-xs {{ $message['sender'] == 'admin' ? 'text-blue-100' : 'text-gray-500' }} mt-1">
+                            <p class="text-xs text-end {{ $message['sender'] == 'admin' ? 'text-blue-100' : 'text-gray-400' }} mt-1">
                                 {{ $message['created_at']->format('h:i A') }}
                             </p>
                         </div>
@@ -77,17 +120,68 @@
     </div>
 
         <!-- Chat Input -->
-        <div class="p-4 border-t">
+        <div class="p-4 border-t" x-data="{ recording: false, audioBlob: null }">
             <form wire:submit.prevent="sendMessage" class="flex space-x-2">
                 <input type="text" wire:model="newMessage"
                     class="flex-1 rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                     placeholder="Type your message..." autocomplete="off" />
+                    
+                <button type="button" 
+                    x-show="!recording"
+                    @click="startRecording()"
+                    class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4z"/>
+                        <path d="M5.5 9.643a.5.5 0 01-.5-.5V4a5 5 0 0110 0v5.143a.5.5 0 01-1 0V4a4 4 0 00-8 0v5.143a.5.5 0 01-.5.5z"/>
+                    </svg>
+                </button>
+                
+                <button type="button" 
+                    x-show="recording"
+                    @click="stopRecording()"
+                    class="px-4 py-2 bg-red-600 text-white rounded-lg animate-pulse">
+                    Stop Recording
+                </button>
+        
                 <button type="submit"
-                    class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                    class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">
                     Send
                 </button>
             </form>
         </div>
+        
+        <script>
+            function startRecording() {
+                // Voice recording logic
+                navigator.mediaDevices.getUserMedia({ audio: true })
+                    .then(stream => {
+                        const mediaRecorder = new MediaRecorder(stream);
+                        const audioChunks = [];
+                        
+                        mediaRecorder.addEventListener("dataavailable", event => {
+                            audioChunks.push(event.data);
+                        });
+        
+                        mediaRecorder.addEventListener("stop", () => {
+                            const audioBlob = new Blob(audioChunks, { type: 'audio/ogg' });
+                            const formData = new FormData();
+                            formData.append('audio', audioBlob);
+                            
+                            // Send to server
+                            Livewire.dispatch('sendVoiceMessage', { audio: audioBlob });
+                        });
+        
+                        mediaRecorder.start();
+                        this.recording = true;
+                        this.mediaRecorder = mediaRecorder;
+                    });
+            }
+        
+            function stopRecording() {
+                this.mediaRecorder.stop();
+                this.recording = false;
+            }
+        </script>
     @else
         <div class="h-full flex items-center justify-center">
             <p class="text-gray-500">Select a user to start chatting</p>
@@ -96,6 +190,84 @@
 </div>
 
 <script>
+    // Audio playback functions
+    function toggleAudioPlayback(button, audioUrl) {
+        let audio = button.audioElement;
+        
+        if (!audio) {
+            audio = new Audio(audioUrl);
+            button.audioElement = audio;
+            
+            audio.addEventListener('timeupdate', () => {
+                const progress = (audio.currentTime / audio.duration) * 100;
+                const progressBar = button.parentElement.querySelector('.progress');
+                const durationElement = button.parentElement.querySelector('.duration');
+                if (progressBar) progressBar.style.width = `${progress}%`;
+                if (durationElement) durationElement.textContent = formatTime(audio.currentTime);
+            });
+            
+            audio.addEventListener('ended', () => {
+                button.dataset.playing = 'false';
+                button.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-white" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"/>
+                </svg>`;
+            });
+        }
+        
+        if (button.dataset.playing === 'true') {
+            audio.pause();
+            button.dataset.playing = 'false';
+            button.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-white" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"/>
+            </svg>`;
+        } else {
+            audio.play();
+            button.dataset.playing = 'true';
+            button.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-white" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9 8a1 1 0 011-1h.01a1 1 0 110 2H10a1 1 0 01-1-1zm4 0a1 1 0 011-1h.01a1 1 0 110 2H14a1 1 0 01-1-1z" clip-rule="evenodd"/>
+            </svg>`;
+        }
+    }
+
+    function formatTime(seconds) {
+        const minutes = Math.floor(seconds / 60);
+        const remainingSeconds = Math.floor(seconds % 60);
+        return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+    }
+
+    // Recording functions
+    function startRecording() {
+        // Voice recording logic
+        navigator.mediaDevices.getUserMedia({ audio: true })
+            .then(stream => {
+                const mediaRecorder = new MediaRecorder(stream);
+                const audioChunks = [];
+                
+                mediaRecorder.addEventListener("dataavailable", event => {
+                    audioChunks.push(event.data);
+                });
+    
+                mediaRecorder.addEventListener("stop", () => {
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/ogg' });
+                    const formData = new FormData();
+                    formData.append('audio', audioBlob);
+                    
+                    // Send to server
+                    Livewire.dispatch('sendVoiceMessage', { audio: audioBlob });
+                });
+    
+                mediaRecorder.start();
+                this.recording = true;
+                this.mediaRecorder = mediaRecorder;
+            });
+    }
+
+    function stopRecording() {
+        this.mediaRecorder.stop();
+        this.recording = false;
+    }
+
+    // Scroll handling
     document.addEventListener('livewire:initialized', () => {
         const scrollToBottom = () => {
             const messageContainer = document.getElementById('chat-messages');

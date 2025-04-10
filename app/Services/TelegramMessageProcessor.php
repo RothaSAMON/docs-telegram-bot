@@ -25,8 +25,55 @@ class TelegramMessageProcessor
                 'type' => isset($messageData['photo']) ? 'photo' : 'text',
                 'hasText' => isset($messageData['text']),
                 'hasPhoto' => isset($messageData['photo']),
+                'hasVoice' => isset($messageData['voice']),
                 'media_group_id'=> $messageData['media_group_id'] ?? null,
             ]);
+
+
+            // Handle voice messages
+            if (isset($messageData['voice'])) {
+                $fileId = $messageData['voice']['file_id'];
+                
+                Log::info('Processing voice message', [
+                    'fileId' => $fileId,
+                    'duration' => $messageData['voice']['duration'],
+                    'mime_type' => $messageData['voice']['mime_type'] ?? 'audio/ogg'
+                ]);
+                
+                $voiceContent = $this->telegramService->getVoice($fileId);
+                if (!$voiceContent) {
+                    Log::error('Failed to get voice content from Telegram');
+                    return null;
+                }
+
+                // Inside the voice message handling section
+                $base64Content = base64_encode($voiceContent);
+                $fileUrl = $this->s3FileUpload->uploadFile($base64Content, 'ogg'); // Change 'voice' to 'ogg'
+                
+                if (!$fileUrl) {
+                    Log::error('Failed to upload voice to S3');
+                    return null;
+                }
+
+                try {
+                    $messageData = [
+                        'telegram_user_id' => $telegramUserId,
+                        'content' => $messageData['caption'] ?? '',
+                        'file_url' => $fileUrl,
+                        'file_type' => 'voice',
+                        'from_admin' => false,
+                        'is_read' => false,
+                    ];
+            
+                    return TelegramMessage::create($messageData);
+                } catch (\Exception $e) {
+                    Log::error('Failed to create voice message record', [
+                        'error' => $e->getMessage(),
+                        'data' => $messageData
+                    ]);
+                    throw $e;
+                }
+            }
 
             // Handle photo messages
             if (isset($messageData['photo'])) {

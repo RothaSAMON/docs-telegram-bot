@@ -29,12 +29,20 @@ class S3FileUpload
                 $fileContent = base64_decode($fileContent);
             }
 
+            // Set correct content type based on extension
+            $contentType = match($extension) {
+                'jpg', 'jpeg' => 'image/jpeg',
+                'png' => 'image/png',
+                'ogg', 'voice' => 'audio/ogg',
+                default => 'application/octet-stream'
+            };
+
             // Upload using AWS SDK without ACL
             $result = $s3Client->putObject([
                 'Bucket' => $bucket,
                 'Key'    => $fileName,
                 'Body'   => $fileContent,
-                'ContentType' => 'image/jpeg'
+                'ContentType' => $contentType
             ]);
 
             if (!$result['ObjectURL']) {
