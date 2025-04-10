@@ -21,10 +21,11 @@ class TelegramMessageProcessor
     public function processMessage(array $messageData, int $telegramUserId): ?TelegramMessage
     {
         try {
-              Log::info('Processing message data', [
+            Log::info('Processing message data', [
                 'type' => isset($messageData['photo']) ? 'photo' : 'text',
                 'hasText' => isset($messageData['text']),
-                'hasPhoto' => isset($messageData['photo'])
+                'hasPhoto' => isset($messageData['photo']),
+                'media_group_id'=> $messageData['media_group_id'] ?? null,
             ]);
 
             // Handle photo messages
@@ -35,7 +36,8 @@ class TelegramMessageProcessor
                 
                 Log::info('Processing photo', [
                     'fileId' => $fileId,
-                    'size' => $photo['file_size']
+                    'size' => $photo['file_size'],
+                    'media_group_id'=> $messageData['media_group_id']?? null,
                 ]);
                 
                 $photoContent = $this->telegramService->getPhoto($fileId);
@@ -72,16 +74,18 @@ class TelegramMessageProcessor
                         'file_type' => 'photo',
                         'from_admin' => false,
                         'is_read' => false,
+                        'media_group_id' => $messageData['media_group_id'] ?? null,
                     ];
-
+            
                     Log::info('Attempting to create message with data', $messageData);
-
+            
                     $message = TelegramMessage::create($messageData);
-
+            
                     Log::info('Message created successfully', [
                         'message_id' => $message->id,
                         'file_url' => $message->file_url,
                         'file_type' => $message->file_type,
+                        'media_group_id' => $message->media_group_id,
                         'telegram_user_id' => $message->telegram_user_id
                     ]);
 
@@ -97,28 +101,28 @@ class TelegramMessageProcessor
     
             // Handle text messages
             if (isset($messageData['text'])) {
-              try {
-                  $message = TelegramMessage::create([
-                      'telegram_user_id' => $telegramUserId,
-                      'content' => $messageData['text'],
-                      'from_admin' => false,
-                      'is_read' => false,
-                  ]);
-  
-                  Log::info('Text message created successfully', [
-                      'message_id' => $message->id,
-                      'telegram_user_id' => $telegramUserId
-                  ]);
-  
-                  return $message;
-              } catch (\Exception $e) {
-                  Log::error('Failed to create text message record', [
-                      'error' => $e->getMessage(),
-                      'telegram_user_id' => $telegramUserId
-                  ]);
-                  throw $e;
-              }
-          }
+            try {
+                $message = TelegramMessage::create([
+                    'telegram_user_id' => $telegramUserId,
+                    'content' => $messageData['text'],
+                    'from_admin' => false,
+                    'is_read' => false,
+                ]);
+
+                Log::info('Text message created successfully', [
+                    'message_id' => $message->id,
+                    'telegram_user_id' => $telegramUserId
+                ]);
+
+                return $message;
+            } catch (\Exception $e) {
+                Log::error('Failed to create text message record', [
+                    'error' => $e->getMessage(),
+                    'telegram_user_id' => $telegramUserId
+                ]);
+                throw $e;
+            }
+        }
         } catch (\Exception $e) {
             Log::error('Error processing message', [
                 'error' => $e->getMessage(),

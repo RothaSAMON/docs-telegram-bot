@@ -25,7 +25,8 @@ class TelegramWebhookController extends Controller
             // Log the raw request data
             Log::info('Raw webhook data received', [
                 'data' => $request->all(),
-                'headers' => $request->headers->all()
+                'headers' => $request->headers->all(),
+                'media_group_id' => $request->input('message.media_group_id'),
             ]);
     
             $data = $request->all();

@@ -45,6 +45,7 @@ class ChatConversation extends Component
                     'message' => $message->content,
                     'file_url' => $message->file_url,
                     'file_type' => $message->file_type,
+                    'media_group_id' => $message->media_group_id,
                     'created_at' => $message->created_at
                 ];
             });
@@ -122,6 +123,7 @@ class ChatConversation extends Component
                             'message' => $message->content,
                             'file_url' => $message->file_url,
                             'file_type' => $message->file_type,
+                            'media_group_id' => $message->media_group_id,
                             'created_at' => $message->created_at
                         ];
                     });
