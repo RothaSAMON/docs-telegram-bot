@@ -84,9 +84,12 @@ class TelegramWebhookController extends Controller
                         broadcast(new UserAdded($telegramUser))->toOthers();
                         
                         // Prepare message content for broadcast
-                        $broadcastContent = $message->file_type === 'photo' 
-                            ? '[Photo]' . ($message->content ? ': ' . $message->content : '')
-                            : $message->content;
+                        $broadcastContent = match($message->file_type) {
+                            'photo' => '[Photo]' . ($message->content ? ': ' . $message->content : ''),
+                            'video' => '[Video]' . ($message->content ? ': ' . $message->content : ''),
+                            'voice' => '[Voice Message]' . ($message->content ? ': ' . $message->content : ''),
+                            default => $message->content
+                        };
     
                         broadcast(new TelegramMessageReceived($telegramUser->id, $broadcastContent))->toOthers();
                         

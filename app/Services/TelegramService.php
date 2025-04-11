@@ -140,4 +140,54 @@ class TelegramService
             return false;
         }
     }
+    
+    public function getVideo(string $fileId): ?string
+    {
+        try {
+            $filePath = $this->getFilePath($fileId);
+            if (!$filePath) {
+                return null;
+            }
+            
+            return $this->downloadFile($filePath);
+        } catch (\Exception $e) {
+            Log::error('Error getting video from Telegram', [
+                'error' => $e->getMessage(),
+                'fileId' => $fileId
+            ]);
+            return null;
+        }
+    }
+
+    protected function getFilePath(string $fileId): ?string
+    {
+        $response = Http::get("{$this->apiUrl}/getFile", [
+            'file_id' => $fileId
+        ]);
+
+        if (!$response->successful()) {
+            Log::error('Failed to get file path from Telegram', [
+                'file_id' => $fileId,
+                'error' => $response->json(),
+            ]);
+            return null;
+        }
+
+        return $response->json()['result']['file_path'] ?? null;
+    }
+
+    protected function downloadFile(string $filePath): ?string
+    {
+        $fileUrl = "https://api.telegram.org/file/bot{$this->botToken}/{$filePath}";
+        $fileContent = Http::get($fileUrl)->body();
+        
+        if (empty($fileContent)) {
+            Log::error('Failed to download file from Telegram', [
+                'file_path' => $filePath
+            ]);
+            return null;
+        }
+
+        return $fileContent;
+    }
 }

@@ -22,154 +22,119 @@ class TelegramMessageProcessor
     {
         try {
             Log::info('Processing message data', [
+                'messageData' => $messageData,
                 'type' => isset($messageData['photo']) ? 'photo' : 'text',
                 'hasText' => isset($messageData['text']),
                 'hasPhoto' => isset($messageData['photo']),
                 'hasVoice' => isset($messageData['voice']),
+                'hasVideo' => isset($messageData['video']),
                 'media_group_id'=> $messageData['media_group_id'] ?? null,
             ]);
-
-
-            // Handle voice messages
-            if (isset($messageData['voice'])) {
-                $fileId = $messageData['voice']['file_id'];
-                
-                Log::info('Processing voice message', [
-                    'fileId' => $fileId,
-                    'duration' => $messageData['voice']['duration'],
-                    'mime_type' => $messageData['voice']['mime_type'] ?? 'audio/ogg'
-                ]);
-                
-                $voiceContent = $this->telegramService->getVoice($fileId);
-                if (!$voiceContent) {
-                    Log::error('Failed to get voice content from Telegram');
-                    return null;
-                }
-
-                // Inside the voice message handling section
-                $base64Content = base64_encode($voiceContent);
-                $fileUrl = $this->s3FileUpload->uploadFile($base64Content, 'ogg'); // Change 'voice' to 'ogg'
-                
-                if (!$fileUrl) {
-                    Log::error('Failed to upload voice to S3');
-                    return null;
-                }
-
-                try {
-                    $messageData = [
-                        'telegram_user_id' => $telegramUserId,
-                        'content' => $messageData['caption'] ?? '',
-                        'file_url' => $fileUrl,
-                        'file_type' => 'voice',
-                        'from_admin' => false,
-                        'is_read' => false,
-                    ];
-            
-                    return TelegramMessage::create($messageData);
-                } catch (\Exception $e) {
-                    Log::error('Failed to create voice message record', [
-                        'error' => $e->getMessage(),
-                        'data' => $messageData
-                    ]);
-                    throw $e;
-                }
-            }
-
-            // Handle photo messages
-            if (isset($messageData['photo'])) {
-                // Get the largest photo (last in the array)
-                $photo = end($messageData['photo']);
-                $fileId = $photo['file_id'];
-                
-                Log::info('Processing photo', [
-                    'fileId' => $fileId,
-                    'size' => $photo['file_size'],
-                    'media_group_id'=> $messageData['media_group_id']?? null,
-                ]);
-                
-                $photoContent = $this->telegramService->getPhoto($fileId);
-                if (!$photoContent) {
-                    Log::error('Failed to get photo content from Telegram');
-                    return null;
-                }
-
-                // Convert binary data to base64 for S3 upload
-                $base64Content = base64_encode($photoContent);
-                
-                Log::info('Photo content retrieved', [
-                    'contentLength' => strlen($base64Content),
-                    'isBase64' => base64_encode(base64_decode($base64Content, true)) === $base64Content
-                ]);
-                
-                $fileUrl = $this->s3FileUpload->uploadFile($base64Content);
-                
-                Log::info('Photo upload attempt', [
-                    'success' => !empty($fileUrl),
-                    'url' => $fileUrl ?? 'null'
-                ]);
-
-                if (!$fileUrl) {
-                    Log::error('Failed to upload photo to S3');
-                    return null;
-                }
-
-                try {
-                    $messageData = [
-                        'telegram_user_id' => $telegramUserId,
-                        'content' => $messageData['caption'] ?? '',
-                        'file_url' => $fileUrl,
-                        'file_type' => 'photo',
-                        'from_admin' => false,
-                        'is_read' => false,
-                        'media_group_id' => $messageData['media_group_id'] ?? null,
-                    ];
-            
-                    Log::info('Attempting to create message with data', $messageData);
-            
-                    $message = TelegramMessage::create($messageData);
-            
-                    Log::info('Message created successfully', [
-                        'message_id' => $message->id,
-                        'file_url' => $message->file_url,
-                        'file_type' => $message->file_type,
-                        'media_group_id' => $message->media_group_id,
-                        'telegram_user_id' => $message->telegram_user_id
-                    ]);
-
-                    return $message;
-                } catch (\Exception $e) {
-                    Log::error('Failed to create message record', [
-                        'error' => $e->getMessage(),
-                        'data' => $messageData
-                    ]);
-                    throw $e;
-                }
-            }
     
-            // Handle text messages
+            // Handle text messages first
             if (isset($messageData['text'])) {
-            try {
-                $message = TelegramMessage::create([
+                return TelegramMessage::create([
                     'telegram_user_id' => $telegramUserId,
                     'content' => $messageData['text'],
                     'from_admin' => false,
                     'is_read' => false,
                 ]);
-
-                Log::info('Text message created successfully', [
-                    'message_id' => $message->id,
-                    'telegram_user_id' => $telegramUserId
-                ]);
-
-                return $message;
-            } catch (\Exception $e) {
-                Log::error('Failed to create text message record', [
-                    'error' => $e->getMessage(),
-                    'telegram_user_id' => $telegramUserId
-                ]);
-                throw $e;
             }
-        }
+    
+            // Handle video messages
+            if (isset($messageData['video'])) {
+                $fileId = $messageData['video']['file_id'];
+                $videoContent = $this->telegramService->getVideo($fileId);
+                if (!$videoContent) {
+                    Log::error('Failed to get video content from Telegram');
+                    return null;
+                }
+    
+                $base64Content = base64_encode($videoContent);
+                $fileUrl = $this->s3FileUpload->uploadFile($base64Content, 'mp4');
+                
+                if (!$fileUrl) {
+                    Log::error('Failed to upload video to S3');
+                    return null;
+                }
+    
+                return TelegramMessage::create([
+                    'telegram_user_id' => $telegramUserId,
+                    'content' => $messageData['caption'] ?? '',
+                    'file_url' => $fileUrl,
+                    'file_type' => 'video',
+                    'from_admin' => false,
+                    'is_read' => false,
+                ]);
+            }
+    
+            // Handle voice messages
+            if (isset($messageData['voice'])) {
+                $fileId = $messageData['voice']['file_id'];
+                $voiceContent = $this->telegramService->getVoice($fileId);
+                if (!$voiceContent) {
+                    Log::error('Failed to get voice content from Telegram');
+                    return null;
+                }
+    
+                $base64Content = base64_encode($voiceContent);
+                $fileUrl = $this->s3FileUpload->uploadFile($base64Content, 'ogg');
+                
+                if (!$fileUrl) {
+                    Log::error('Failed to upload voice to S3');
+                    return null;
+                }
+    
+                return TelegramMessage::create([
+                    'telegram_user_id' => $telegramUserId,
+                    'content' => $messageData['caption'] ?? '',
+                    'file_url' => $fileUrl,
+                    'file_type' => 'voice',
+                    'from_admin' => false,
+                    'is_read' => false,
+                ]);
+            }
+    
+            // Handle photo messages
+            if (isset($messageData['photo'])) {
+                $photo = end($messageData['photo']);
+                $fileId = $photo['file_id'];
+                $photoContent = $this->telegramService->getPhoto($fileId);
+                if (!$photoContent) {
+                    Log::error('Failed to get photo content from Telegram');
+                    return null;
+                }
+    
+                $base64Content = base64_encode($photoContent);
+                $fileUrl = $this->s3FileUpload->uploadFile($base64Content);
+                
+                if (!$fileUrl) {
+                    Log::error('Failed to upload photo to S3');
+                    return null;
+                }
+    
+                return TelegramMessage::create([
+                    'telegram_user_id' => $telegramUserId,
+                    'content' => $messageData['caption'] ?? '',
+                    'file_url' => $fileUrl,
+                    'file_type' => 'photo',
+                    'from_admin' => false,
+                    'is_read' => false,
+                ]);
+            }
+    
+            // If no recognized message type was handled, log and return unsupported type
+            Log::warning('Unhandled message type received', [
+                'messageData' => $messageData
+            ]);
+            
+            return TelegramMessage::create([
+                'telegram_user_id' => $telegramUserId,
+                'content' => '[Unsupported message type]',
+                'from_admin' => false,
+                'is_read' => false,
+            ]);
+    
         } catch (\Exception $e) {
             Log::error('Error processing message', [
                 'error' => $e->getMessage(),
