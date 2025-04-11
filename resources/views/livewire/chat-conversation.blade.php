@@ -16,7 +16,7 @@
                     </div>
                     <div>
                         <h3 class="text-lg font-semibold text-gray-800">
-                            {{ $telegramUser->first_name }} {{ $telegramUser->last_name }} <svg class="inline-block w-4 h-4 mb-1 text-blue-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                            {{ $telegramUser->first_name }} {{ $telegramUser->last_name }} <svg class="inline-block w-4 h-4 mb-0.5 text-blue-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
                         </h3>
                         <p class="text-sm text-gray-500">
                             {{ '@' . $telegramUser->username }}
@@ -35,24 +35,23 @@
                             !isset($message['media_group_id']) || 
                             !in_array($message['media_group_id'], $processedGroups)
                         )
-                            <!-- Inside the main message loop -->
                             <div class="flex {{ $message['sender'] == 'admin' ? 'justify-end' : 'justify-start' }}"
                                 wire:key="message-{{ $loop->index }}">
                                 <div class="max-w-[70%] {{ $message['sender'] == 'admin' ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-900' }} rounded-lg px-2 py-2 shadow">
                                     @if (isset($message['media_group_id']) && $message['file_type'] === 'photo')
-                                        <div class="grid grid-cols-2 gap-1 mb-2">
-                                            @foreach ($messages->where('media_group_id', $message['media_group_id']) as $groupedMessage)
-                                                @if (isset($groupedMessage['file_url']) && $groupedMessage['file_type'] === 'photo')
+                                        @if (isset($message['media_group_id']) && $message['file_type'] === 'photo')
+                                            <div class="grid grid-cols-2 gap-1 mb-2">
+                                                @foreach ($message['group_files'] as $groupFile)
                                                     <div class="relative aspect-square">
-                                                        <img src="{{ $groupedMessage['file_url'] }}" 
+                                                        <img src="{{ $groupFile['file_url'] }}" 
                                                             alt="Shared image" 
                                                             class="rounded-lg w-full h-full object-cover cursor-pointer"
-                                                            onclick="window.open('{{ $groupedMessage['file_url'] }}', '_blank')"
+                                                            onclick="window.open('{{ $groupFile['file_url'] }}', '_blank')"
                                                             loading="lazy">
                                                     </div>
-                                                @endif
-                                            @endforeach
-                                        </div>
+                                                @endforeach
+                                            </div>
+                                        @endif
                                         @php
                                             $processedGroups[] = $message['media_group_id'];
                                         @endphp
@@ -86,27 +85,12 @@
                                                 </div>
                                                 <div class="flex justify-between text-xs text-gray-500 mt-1">
                                                     <span class="duration">0:00</span>
-                                                    {{-- <span>{{ $message['created_at']->format('H:i') }}</span> --}}
                                                 </div>
                                             </div>
                                         </div>
-                                        
-                                        <style>
-                                            .waveform-bars {
-                                                animation: none;
-                                            }
-                                            
-                                            [data-playing="true"] ~ div .waveform-bars {
-                                                animation: pulse 1s infinite;
-                                            }
-                                            
-                                            @keyframes pulse {
-                                                0% { opacity: 0.3; }
-                                                50% { opacity: 1; }
-                                                100% { opacity: 0.3; }
-                                            }
-                                        </style>
+                                        <!-- Voice message content -->
                                     @endif
+                                    
                                     @if (!empty($message['message']) && (!isset($message['file_type']) || $message['file_type'] !== 'voice'))
                                         <p class="text-sm">{{ $message['message'] }}</p>
                                     @endif
@@ -131,7 +115,22 @@
                         placeholder="Type your message..." 
                         autocomplete="off" />
                     
-                    <!-- Voice Input Button (shows when no text and not recording) -->
+                    <!-- File Upload Button -->
+                    <div class="relative">
+                        <input type="file" 
+                            wire:model.live="uploadedFile" 
+                            accept="image/*"
+                            class="hidden" 
+                            id="file-upload" />
+                        <label for="file-upload" 
+                            class="inline-flex items-center justify-center px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 cursor-pointer">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clip-rule="evenodd" />
+                            </svg>
+                        </label>
+                    </div>
+            
+                    <!-- Voice Input Button -->
                     <button type="button" 
                         x-show="!recording && !hasText"
                         x-cloak
@@ -142,24 +141,11 @@
                             <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
                         </svg>
                     </button>
-
-                    <!-- Recording Controls (shows when recording) -->
-                    <div x-show="recording" class="flex space-x-2">
-                        <button type="button"
-                            @click="cancelRecording()"
-                            class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600">
-                            Cancel
-                        </button>
-                        <button type="button" 
-                            @click="stopAndSendRecording()"
-                            class="px-4 py-2 bg-red-600 text-white rounded-lg animate-pulse">
-                            Send Voice
-                        </button>
-                    </div>
-        
-                    <!-- Send Message Button (shows when has text) -->
+            
+                    <!-- Send Message Button -->
                     <button type="submit"
                         x-show="hasText"
+                        x-cloak
                         class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                             <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" />

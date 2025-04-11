@@ -190,4 +190,55 @@ class TelegramService
 
         return $fileContent;
     }
+
+    public function sendPhoto(string $chatId, string $photoUrl): bool
+    {
+        try {
+            Log::info('Attempting to send photo', [
+                'chat_id' => $chatId,
+                'photo_url' => $photoUrl
+            ]);
+    
+            // Check if the photo URL is accessible
+            $photoCheck = Http::get($photoUrl);
+            if (!$photoCheck->successful()) {
+                Log::error('Photo URL is not accessible', [
+                    'photo_url' => $photoUrl,
+                    'status' => $photoCheck->status()
+                ]);
+                return false;
+            }
+    
+            $response = Http::attach(
+                'photo', 
+                file_get_contents($photoUrl), 
+                'photo.jpg'
+            )->post("{$this->apiUrl}/sendPhoto", [
+                'chat_id' => $chatId
+            ]);
+    
+            if (!$response->successful()) {
+                Log::error('Failed to send photo message', [
+                    'chat_id' => $chatId,
+                    'error' => $response->json(),
+                    'status' => $response->status()
+                ]);
+                return false;
+            }
+    
+            Log::info('Photo sent successfully', [
+                'chat_id' => $chatId,
+                'response' => $response->json()
+            ]);
+    
+            return true;
+        } catch (\Exception $e) {
+            Log::error('Error sending photo message', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'chatId' => $chatId
+            ]);
+            return false;
+        }
+    }
 }

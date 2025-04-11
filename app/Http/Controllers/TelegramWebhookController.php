@@ -27,6 +27,7 @@ class TelegramWebhookController extends Controller
                 'data' => $request->all(),
                 'headers' => $request->headers->all(),
                 'media_group_id' => $request->input('message.media_group_id'),
+                'has_photo' => $request->has('message.photo'),
             ]);
     
             $data = $request->all();
@@ -76,7 +77,8 @@ class TelegramWebhookController extends Controller
                     Log::info('Message processed', [
                         'messageId' => $message->id,
                         'type' => isset($data['message']['photo']) ? 'photo' : 'text',
-                        'userId' => $telegramUser->id
+                        'userId' => $telegramUser->id,
+                        'media_group_id' => $message->media_group_id,
                     ]);
     
                     // Broadcast with error handling
@@ -102,7 +104,6 @@ class TelegramWebhookController extends Controller
                             'error' => $e->getMessage(),
                             'messageId' => $message->id
                         ]);
-                        // Continue execution even if broadcasting fails
                     }
                 } else {
                     Log::error('Message processing failed but did not throw exception');

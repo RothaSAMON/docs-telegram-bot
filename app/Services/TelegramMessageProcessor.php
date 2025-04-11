@@ -118,12 +118,12 @@ class TelegramMessageProcessor
                     'content' => $messageData['caption'] ?? '',
                     'file_url' => $fileUrl,
                     'file_type' => 'photo',
+                    'media_group_id' => $messageData['media_group_id'] ?? null,
                     'from_admin' => false,
                     'is_read' => false,
                 ]);
             }
     
-            // If no recognized message type was handled, log and return unsupported type
             Log::warning('Unhandled message type received', [
                 'messageData' => $messageData
             ]);
@@ -140,6 +140,62 @@ class TelegramMessageProcessor
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
                 'messageData' => $messageData
+            ]);
+            return null;
+        }
+    }
+
+    public function processUploadedFile($file, int $telegramUserId, string $type = 'photo'): ?TelegramMessage
+    {
+        try {
+            Log::info('Processing uploaded file', [
+                'type' => $type,
+                'user_id' => $telegramUserId,
+                'original_name' => $file->getClientOriginalName()
+            ]);
+    
+            // Read file contents
+            $fileContents = file_get_contents($file->getRealPath());
+            if (!$fileContents) {
+                Log::error('Failed to read uploaded file contents');
+                return null;
+            }
+    
+            // Encode and upload to S3
+            $base64Content = base64_encode($fileContents);
+            $fileExtension = $file->getClientOriginalExtension() ?: 'jpg';
+            
+            Log::info('Uploading file to S3', [
+                'extension' => $fileExtension,
+                'size' => strlen($base64Content)
+            ]);
+    
+            $fileUrl = $this->s3FileUpload->uploadFile($base64Content, $fileExtension);
+            if (!$fileUrl) {
+                Log::error('Failed to upload file to S3');
+                return null;
+            }
+    
+            Log::info('File uploaded successfully', ['url' => $fileUrl]);
+    
+            // Create message record
+            $message = TelegramMessage::create([
+                'telegram_user_id' => $telegramUserId,
+                'content' => '',
+                'file_url' => $fileUrl,
+                'file_type' => $type,
+                'from_admin' => true,
+                'is_read' => true,
+            ]);
+    
+            Log::info('Message record created', ['message_id' => $message->id]);
+    
+            return $message;
+        } catch (\Exception $e) {
+            Log::error('Error processing uploaded file', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'user_id' => $telegramUserId
             ]);
             return null;
         }
