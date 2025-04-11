@@ -39,19 +39,17 @@
                                 wire:key="message-{{ $loop->index }}">
                                 <div class="max-w-[70%] {{ $message['sender'] == 'admin' ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-900' }} rounded-lg px-2 py-2 shadow">
                                     @if (isset($message['media_group_id']) && $message['file_type'] === 'photo')
-                                        @if (isset($message['media_group_id']) && $message['file_type'] === 'photo')
-                                            <div class="grid grid-cols-2 gap-1 mb-2">
-                                                @foreach ($message['group_files'] as $groupFile)
-                                                    <div class="relative aspect-square">
-                                                        <img src="{{ $groupFile['file_url'] }}" 
-                                                            alt="Shared image" 
-                                                            class="rounded-lg w-full h-full object-cover cursor-pointer"
-                                                            onclick="window.open('{{ $groupFile['file_url'] }}', '_blank')"
-                                                            loading="lazy">
-                                                    </div>
-                                                @endforeach
-                                            </div>
-                                        @endif
+                                        <div class="grid grid-cols-2 gap-1 mb-2">
+                                            @foreach ($message['group_files'] as $groupFile)
+                                                <div class="relative aspect-square">
+                                                    <img src="{{ $groupFile['file_url'] }}" 
+                                                        alt="Shared image" 
+                                                        class="rounded-lg w-full h-full object-cover cursor-pointer"
+                                                        onclick="window.open('{{ $groupFile['file_url'] }}', '_blank')"
+                                                        loading="lazy">
+                                                </div>
+                                            @endforeach
+                                        </div>
                                         @php
                                             $processedGroups[] = $message['media_group_id'];
                                         @endphp
@@ -62,6 +60,16 @@
                                                 class="rounded-lg max-w-full md:max-w-[400px] h-auto cursor-pointer"
                                                 onclick="window.open('{{ $message['file_url'] }}', '_blank')"
                                                 loading="lazy">
+                                        </div>
+                                    @elseif (isset($message['file_url']) && $message['file_type'] === 'video')
+                                        <div class="video-container relative">
+                                            <video 
+                                                class="rounded-lg max-w-full md:max-w-[300px] h-auto"
+                                                controls
+                                                preload="metadata">
+                                                <source src="{{ $message['file_url'] }}" type="video/mp4">
+                                                Your browser does not support the video tag.
+                                            </video>
                                         </div>
                                     @elseif (isset($message['file_url']) && $message['file_type'] === 'voice')
                                         <div class="audio-message flex items-center gap-3 min-w-[240px]">
