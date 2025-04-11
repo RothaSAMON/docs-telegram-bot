@@ -87,6 +87,7 @@ class ChatConversation extends Component
                 'created_at' => now()
             ]);
 
+            $this->dispatch('message-sent');
             $this->newMessage = '';
 
             // Dispatch events
