@@ -16,7 +16,7 @@
                     </div>
                     <div>
                         <h3 class="text-lg font-semibold text-gray-800">
-                            {{ $telegramUser->first_name }} {{ $telegramUser->last_name }} <svg class="inline-block w-4 h-4 mb-0.5 text-blue-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                            {{ $telegramUser->first_name }} {{ $telegramUser->last_name }} <svg class="inline-block w-4 h-4 mb-0.5 text-blue-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
                         </h3>
                         <p class="text-sm text-gray-500">
                             {{ '@' . $telegramUser->username }}
@@ -90,10 +90,29 @@
                                             <video 
                                                 class="rounded-lg max-w-full md:max-w-[300px] h-auto"
                                                 controls
-                                                preload="metadata">
-                                                <source src="{{ $message['file_url'] }}" type="video/mp4">
+                                                controlsList="nodownload"
+                                                poster="{{ $message['thumbnail_url'] ?? '' }}"
+                                                preload="none">
+                                                <source src="{{ $message['file_url'] }}" type="{{ $message['mime_type'] ?? 'video/mp4' }}">
                                                 Your browser does not support the video tag.
                                             </video>
+                                        </div>
+                                    @elseif (isset($message['file_url']) && $message['file_type'] === 'document')
+                                        <div class="document-container flex items-center gap-2 bg-white/10 rounded-md p-2">
+                                            <div class="document-icon">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" viewBox="0 0 20 20" fill="currentColor">
+                                                    <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd" />
+                                                </svg>
+                                            </div>
+                                            <div class="flex-1">
+                                                <div class="text-sm font-medium">{{ $message['filename'] ?? pathinfo($message['file_url'], PATHINFO_BASENAME) }}</div>
+                                                <a href="{{ $message['file_url'] }}" 
+                                                   download="{{ $message['filename'] ?? pathinfo($message['file_url'], PATHINFO_BASENAME) }}"
+                                                   target="_blank" 
+                                                   class="text-xs underline opacity-75 hover:opacity-100">
+                                                    Download Document
+                                                </a>
+                                            </div>
                                         </div>
                                     @elseif (isset($message['file_url']) && $message['file_type'] === 'voice')
                                         <div class="audio-message flex items-center gap-3 min-w-[240px]">
