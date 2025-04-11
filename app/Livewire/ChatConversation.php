@@ -2,6 +2,7 @@
 
 namespace App\Livewire;
 
+use App\Events\MessageSent;
 use Livewire\Component;
 use App\Models\TelegramUser;
 use App\Models\TelegramMessage;
@@ -20,6 +21,7 @@ class ChatConversation extends Component
     public string $newMessage = '';
     public Collection $messages;
     public $uploadedFile;
+    public $uploadedDocument;
 
     #[On('echo:telegram-messages,.MessageReceived')] 
     public function handleNewMessage($event)
@@ -233,6 +235,79 @@ class ChatConversation extends Component
             }
         } catch (\Exception $e) {
             Log::error('Error in sendFileMessage', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+        }
+    }
+
+    public function updatedUploadedDocument()
+    {
+        Log::info('Document uploaded to component', [
+            'fileName' => $this->uploadedDocument->getClientOriginalName(),
+            'fileSize' => $this->uploadedDocument->getSize(),
+            'mimeType' => $this->uploadedDocument->getMimeType()
+        ]);
+
+        $this->sendDocumentMessage();
+    }
+
+    public function sendDocumentMessage()
+    {
+        if (!$this->uploadedDocument || !$this->telegramUser) {
+            return;
+        }
+
+        try {
+            $fileContents = $this->uploadedDocument->get();
+            $s3Service = app(S3FileUpload::class);
+            $fileUrl = $s3Service->uploadFile(
+                base64_encode($fileContents),
+                $this->uploadedDocument->getClientOriginalExtension()
+            );
+
+            if (!$fileUrl) {
+                throw new \Exception('Failed to upload document to S3');
+            }
+
+            $message = TelegramMessage::create([
+                'telegram_user_id' => $this->telegramUser->id,
+                'content' => '',
+                'file_url' => $fileUrl,
+                'file_type' => 'document',
+                'filename' => $this->uploadedDocument->getClientOriginalName(),
+                'from_admin' => true,
+                'is_read' => true,
+            ]);
+
+            $telegramService = app(TelegramService::class);
+            $sent = $telegramService->sendDocument(
+                $this->telegramUser->chat_id,
+                $fileUrl,
+                $this->uploadedDocument->getClientOriginalName()
+            );
+
+            if ($sent) {
+                $messageData = [
+                    'sender' => 'admin',
+                    'message' => '',
+                    'file_url' => $fileUrl,
+                    'file_type' => 'document',
+                    'filename' => $this->uploadedDocument->getClientOriginalName(),
+                    'created_at' => now()
+                ];
+
+                $this->messages->push($messageData);
+                $this->uploadedDocument = null;
+                
+                // Broadcast the message
+                broadcast(new MessageSent($message))->toOthers();
+                
+                $this->dispatch('messageReceived');
+                $this->dispatch('messageReceived')->to('telegram-user-list');
+            }
+        } catch (\Exception $e) {
+            Log::error('Error sending document message', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);

@@ -61,6 +61,30 @@
                                                 onclick="window.open('{{ $message['file_url'] }}', '_blank')"
                                                 loading="lazy">
                                         </div>
+                                    @elseif (isset($message['file_url']) && $message['file_type'] === 'document')
+                                        <div class="document-container flex items-center gap-2 bg-white/10 rounded-md p-2">
+                                            <div class="document-icon">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" viewBox="0 0 20 20" fill="currentColor">
+                                                    <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd" />
+                                                </svg>
+                                            </div>
+                                            <div class="flex-1">
+                                                <div class="text-sm font-medium">{{ $message['filename'] ?? 'Document' }}</div>
+                                                <a href="{{ $message['file_url'] }}" 
+                                                    target="_blank" 
+                                                    class="text-xs underline opacity-75 hover:opacity-100">
+                                                    Download Document
+                                                </a>
+                                            </div>
+                                        </div>
+                                    @elseif (isset($message['file_url']) && $message['file_type'] === 'photo' && !isset($message['media_group_id']))
+                                        <div class="">
+                                            <img src="{{ $message['file_url'] }}" 
+                                                alt="Shared image" 
+                                                class="rounded-lg max-w-full md:max-w-[400px] h-auto cursor-pointer"
+                                                onclick="window.open('{{ $message['file_url'] }}', '_blank')"
+                                                loading="lazy">
+                                        </div>
                                     @elseif (isset($message['file_url']) && $message['file_type'] === 'video')
                                         <div class="video-container relative">
                                             <video 
@@ -123,19 +147,52 @@
                         placeholder="Type your message..." 
                         autocomplete="off" />
                     
-                    <!-- File Upload Button -->
-                    <div class="relative">
+                    <!-- Photo Upload Button -->
+                    <!-- Upload Button with Options -->
+                    <div class="relative" x-data="{ showOptions: false }">
+                        <!-- Hidden File Inputs -->
                         <input type="file" 
                             wire:model.live="uploadedFile" 
                             accept="image/*"
                             class="hidden" 
+                            id="photo-upload" />
+                        <input type="file" 
+                            wire:model.live="uploadedDocument" 
+                            accept=".pdf,.doc,.docx,.txt,.xls,.xlsx"
+                            class="hidden" 
                             id="file-upload" />
-                        <label for="file-upload" 
-                            class="inline-flex items-center justify-center px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 cursor-pointer">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                <path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clip-rule="evenodd" />
-                            </svg>
-                        </label>
+
+                        <!-- Upload Button with Dropdown -->
+                        <div class="relative">
+                            <button type="button"
+                                @click="showOptions = !showOptions"
+                                class="inline-flex items-center justify-center px-4 py-4 bg-blue-500 text-white rounded-lg hover:bg-blue-600">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                    <path d="M12.232 4.232a2.5 2.5 0 013.536 3.536l-1.225 1.224a.75.75 0 001.061 1.06l1.224-1.224a4 4 0 00-5.656-5.656l-3 3a4 4 0 00.225 5.865.75.75 0 00.977-1.138 2.5 2.5 0 01-.142-3.667l3-3z" />
+                                    <path d="M11.603 7.963a.75.75 0 00-.977 1.138 2.5 2.5 0 01.142 3.667l-3 3a2.5 2.5 0 01-3.536-3.536l1.225-1.224a.75.75 0 00-1.061-1.06l-1.224 1.224a4 4 0 105.656 5.656l3-3a4 4 0 00-.225-5.865z" />
+                                </svg>
+                            </button>
+
+                            <!-- Dropdown Menu -->
+                            <div x-show="showOptions"
+                                @click.away="showOptions = false"
+                                class="absolute bottom-full right-0 mb-2 w-40 bg-white rounded-lg shadow-lg overflow-hidden">
+                                <label for="photo-upload" 
+                                    class="flex items-center px-4 py-2 hover:bg-gray-100 cursor-pointer">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-gray-600" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clip-rule="evenodd" />
+                                    </svg>
+                                    <span class="text-sm text-gray-700">Upload Photo</span>
+                                </label>
+                                <label for="file-upload" 
+                                    class="flex items-center px-4 py-2 hover:bg-gray-100 cursor-pointer">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-gray-600" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd" />
+                                    </svg>
+                                    <span class="text-sm text-gray-700">Upload File</span>
+                                </label>
+                            </div>
+                        </div>
                     </div>
             
                     <!-- Voice Input Button -->

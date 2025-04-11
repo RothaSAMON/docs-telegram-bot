@@ -241,4 +241,55 @@ class TelegramService
             return false;
         }
     }
+
+    public function sendDocument(string $chatId, string $fileUrl, string $filename = null): bool
+    {
+        try {
+            Log::info('Attempting to send document', [
+                'chat_id' => $chatId,
+                'file_url' => $fileUrl
+            ]);
+
+            // Download the file
+            $response = Http::get($fileUrl);
+            $tempFile = tempnam(sys_get_temp_dir(), 'telegram_doc_');
+            file_put_contents($tempFile, $response->body());
+
+            // Send document to Telegram
+            $response = Http::attach(
+                'document',
+                fopen($tempFile, 'r'),
+                $filename ?? 'document'
+            )->post("{$this->apiUrl}/sendDocument", [
+                'chat_id' => $chatId,
+                'caption' => $filename
+            ]);
+
+            // Clean up temp file
+            unlink($tempFile);
+
+            if (!$response->successful()) {
+                Log::error('Failed to send document', [
+                    'chat_id' => $chatId,
+                    'error' => $response->json(),
+                    'status' => $response->status()
+                ]);
+                return false;
+            }
+
+            Log::info('Document sent successfully', [
+                'chat_id' => $chatId,
+                'response' => $response->json()
+            ]);
+
+            return true;
+        } catch (\Exception $e) {
+            Log::error('Telegram document send error', [
+                'error' => $e->getMessage(),
+                'chat_id' => $chatId,
+                'file_url' => $fileUrl
+            ]);
+            return false;
+        }
+    }
 }
